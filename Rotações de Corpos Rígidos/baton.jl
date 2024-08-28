@@ -2,7 +2,7 @@ using Plots
 
 # Constants
 g = [0.0, -9.81]              # Gravity (m/s^2)
-L = 1.0                     # Length of the baton (meters)
+L = 10.0                     # Length of the baton (meters)
 ω = 10.0                     # Angular velocity (rad/s)
 dt = 0.01                   # Time step (seconds)
 t_total = 2.0               # Total simulation time (seconds)
@@ -31,8 +31,8 @@ for t in 0:dt:t_total
     θ += ω * dt
 
     # Calculate positions of the masses
-    r1 = r_cm .+ (L / 2) .* [cos(θ), sin(θ)]
-    r2 = r_cm .- (L / 2) .* [cos(θ), sin(θ)]
+    r1 = r_cm .+ (L) .* [cos(θ), sin(θ)]
+    r2 = r_cm .- (10.0 - L) .* [cos(θ), sin(θ)]
 
     # Store positions for animation
     push!(r1_list, r1)

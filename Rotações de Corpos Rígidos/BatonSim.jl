@@ -2,7 +2,7 @@ module BatonSim
 
 using Plots
 
-export Bastão, ExtremidadeBastão, Vetor2D, simular_movimento, criar_bastão
+export Vetor2D, simular_movimento, criar_bastão
 
 mutable struct Vetor2D
     x::Float64
@@ -12,7 +12,7 @@ end
 mutable struct ExtremidadeBastão
     posição::Vetor2D # Posição da esfera
     distância_cm::Vetor2D # Vetor com a distância entre o CM e a esfera
-    norm_distância::Float64
+    norm_distância::Float64 # Valor absoluto da distância entre o CM e a esfera
     massa::Float64 # Massa da esfera
     sinal::Float64 # Determina se a massa está na esquerda ou na direita, ou embaixo ou em cima (-1 ou 1)
 end
@@ -49,6 +49,12 @@ function criar_bastão(L::Float64, m::Tuple{Float64, Float64}, posição::Vetor2
     return Bastão(L, (esfera1, esfera2), posição, velocidade, aceleração, φ, ω, α)
 end
 
+function calcular_vetor_distância_esfera(distância::Float64, ângulo::Float64, sinal_extremidade::Float64)
+    dx = sinal_extremidade * distância * cos(ângulo)
+    dy = sinal_extremidade * distância * sin(ângulo)
+    return Vetor2D(dx, dy)
+end
+
 function atualizar_ângulo_euler!(bastão::Bastão, dt::Float64)
     # Atualiza o ângulo de orientação do bastão com base em sua velocidade angular
     bastão.ângulo += bastão.velocidade_angular * dt
@@ -83,14 +89,35 @@ function atualizar_posição_esferas!(bastão::Bastão)
     bastão.extremidades[2].posição = posição_ext2
 end
 
-function calcular_vetor_distância_esfera(distância::Float64, ângulo::Float64, sinal_extremidade::Float64)
-    dx = sinal_extremidade * distância * cos(ângulo)
-    dy = sinal_extremidade * distância * sin(ângulo)
-    return Vetor2D(dx, dy)
+function medir_energia_trans(bastão::Bastão)
+    # Massa total
+    M = bastão.extremidades[1].massa + bastão.extremidades[2].massa
+    v_x = bastão.velocidade.x
+    v_y = bastão.velocidade.y
+    K_trans = 0.5 * M * (v_x^2 + v_y^2)
+    return K_trans
+end
+
+function medir_energia_rot(bastão::Bastão)
+    # Momento de inércia
+    I = (bastão.extremidades[1].massa * bastão.extremidades[1].norm_distância^2) + (bastão.extremidades[2].massa * bastão.extremidades[2].norm_distância^2)
+    ω = bastão.velocidade_angular 
+    K_rot = 0.5 * I * ω^2
+    return  K_rot
+end
+
+function medir_energia_pot(bastão::Bastão)
+    # Massa total
+    M = bastão.extremidades[1].massa + bastão.extremidades[2].massa
+    g = bastão.aceleração.y
+    h = bastão.posição.y
+    U = -1.0 * (M * g * h) 
+    return U
 end
 
 function simular_movimento(bastão::Bastão, t_max::Float64, dt::Float64)
     t = 0.0
+    # Arrays para armazenar as posições
     tempo = [t]
     aux = Vetor2D(bastão.posição.x, bastão.posição.y)
     posição_cm = [aux]
@@ -98,11 +125,22 @@ function simular_movimento(bastão::Bastão, t_max::Float64, dt::Float64)
     posição_esf1 = [aux]
     aux = Vetor2D(bastão.extremidades[2].posição.x, bastão.extremidades[2].posição.y)
     posição_esf2 = [aux]
+
+    # Arrays para armazenar as energias
+    k_trans = [medir_energia_trans(bastão)]
+    k_rot = [medir_energia_rot(bastão)]
+    U = [medir_energia_pot(bastão)]
+    E = [k_trans[1] + k_rot[1] + U[1]]
     while t < t_max
         atualizar_velocidade_euler!(bastão, dt)
         atualizar_posição_bastão_euler!(bastão, dt)
         atualizar_ângulo_euler!(bastão, dt)
         atualizar_posição_esferas!(bastão)
+
+        if bastão.extremidades[1].posição.y < 0.0 || bastão.extremidades[2].posição.y < 0.0
+            println("Bastão atingiu o chão no tempo: ", t)
+            break 
+        end
         
         t += dt
         push!(tempo, t)
@@ -112,8 +150,14 @@ function simular_movimento(bastão::Bastão, t_max::Float64, dt::Float64)
         push!(posição_esf1, aux)
         aux = Vetor2D(bastão.extremidades[2].posição.x, bastão.extremidades[2].posição.y)
         push!(posição_esf2, aux)
+
+        push!(k_trans, medir_energia_trans(bastão))
+        push!(k_rot, medir_energia_rot(bastão))
+        push!(U, medir_energia_pot(bastão))
+        push!(E, k_trans[end] + k_rot[end] + U[end])
     end
     animar_trajetória(tempo, posição_cm, posição_esf1, posição_esf2)
+    fazer_gráfico_energia(tempo, k_trans, k_rot, U, E)
 end
 
 function animar_trajetória(tempo::Vector{Float64}, posição_cm::Vector{Vetor2D}, posição_esf1::Vector{Vetor2D}, posição_esf2::Vector{Vetor2D})
@@ -136,9 +180,19 @@ function animar_trajetória(tempo::Vector{Float64}, posição_cm::Vector{Vetor2D
         plot!([x_esf2[1:i]], [y_esf2[1:i]], color=:green, linestyle =:dot, label="Trajetória da Esfera 2")
         xlims!(x_cm[1]-1, maximum(x_cm)+2)
         ylims!(y_cm[1]-1, maximum(y_cm)+2)
+        annotate!(0.55, 6.0, text("t = $(round(tempo[i], digits=2))", :black, 12))
     end
-    # Save or display the animation
     gif(animação, "Rotações de Corpos Rígidos/simulação_bastão.gif", fps=40)
+end 
+
+function fazer_gráfico_energia(tempo::Vector{Float64}, k_trans::Vector{Float64}, k_rot::Vector{Float64}, U::Vector{Float64}, E::Vector{Float64})
+    pl = plot(xlabel="Tempo", ylabel="Energia", minorgrid=true, title="Evolução da energia - Lançamento de bastão", framestyle=:box, legend=:topright)
+    plot!(tempo, k_trans, label="Cinética")
+    plot!(tempo, k_rot, label="Rotacional")
+    plot!(tempo, U, label="Potencial")
+    plot!(tempo, E, label="Total")
+
+    savefig(pl, "Rotações de Corpos Rígidos/energia.png")
 end 
 
 end 

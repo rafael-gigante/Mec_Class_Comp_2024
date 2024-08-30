@@ -1,6 +1,6 @@
 module BatonSim
 
-using Plots
+using Plots, LaTeXStrings
 
 export Vetor2D, simular_movimento, criar_bastão
 
@@ -22,6 +22,7 @@ mutable struct Bastão
     extremidades::Tuple{ExtremidadeBastão, ExtremidadeBastão}
     posição::Vetor2D # Vetor posição do centro de massa
     velocidade::Vetor2D # Vetor velocidade do centro de massa
+    velocidade_inicial::Vetor2D # Armazena a velocidade inicial do bastão
     aceleração::Vetor2D # Vetor aceleração do centro de massa
     ângulo::Float64 # Ângulo de orientação do bastão
     velocidade_angular::Float64 # Velocidade angular do bastão
@@ -45,8 +46,10 @@ function criar_bastão(L::Float64, m::Tuple{Float64, Float64}, posição::Vetor2
     esfera1 = ExtremidadeBastão(posição_ext1, distância_cm1, L1, m[1], -1.0)
     esfera2 = ExtremidadeBastão(posição_ext2, distância_cm2, L2, m[2], 1.0)
 
+    vel_inicial =  Vetor2D(velocidade.x, velocidade.y)
+
     # Cria e retorna o objeto bastão
-    return Bastão(L, (esfera1, esfera2), posição, velocidade, aceleração, φ, ω, α)
+    return Bastão(L, (esfera1, esfera2), posição, velocidade, vel_inicial, aceleração, φ, ω, α)
 end
 
 function calcular_vetor_distância_esfera(distância::Float64, ângulo::Float64, sinal_extremidade::Float64)
@@ -157,7 +160,7 @@ function simular_movimento(bastão::Bastão, t_max::Float64, dt::Float64)
         push!(E, k_trans[end] + k_rot[end] + U[end])
     end
     animar_trajetória(tempo, posição_cm, posição_esf1, posição_esf2)
-    fazer_gráfico_energia(tempo, k_trans, k_rot, U, E)
+    fazer_gráfico_energia(bastão, tempo, k_trans, k_rot, U, E)
 end
 
 function animar_trajetória(tempo::Vector{Float64}, posição_cm::Vector{Vetor2D}, posição_esf1::Vector{Vetor2D}, posição_esf2::Vector{Vetor2D})
@@ -180,17 +183,18 @@ function animar_trajetória(tempo::Vector{Float64}, posição_cm::Vector{Vetor2D
         plot!([x_esf2[1:i]], [y_esf2[1:i]], color=:green, linestyle =:dot, label="Trajetória da Esfera 2")
         xlims!(x_cm[1]-1, maximum(x_cm)+2)
         ylims!(y_cm[1]-1, maximum(y_cm)+2)
-        annotate!(0.55, 6.0, text("t = $(round(tempo[i], digits=2))", :black, 12))
+        annotate!(1.0, maximum(y_cm)+1, text("t = $(round(tempo[i], digits=2))", :black, 12))
     end
     gif(animação, "Rotações de Corpos Rígidos/simulação_bastão.gif", fps=40)
 end 
 
-function fazer_gráfico_energia(tempo::Vector{Float64}, k_trans::Vector{Float64}, k_rot::Vector{Float64}, U::Vector{Float64}, E::Vector{Float64})
-    pl = plot(xlabel="Tempo", ylabel="Energia", minorgrid=true, title="Evolução da energia - Lançamento de bastão", framestyle=:box, legend=:topright)
-    plot!(tempo, k_trans, label="Cinética")
-    plot!(tempo, k_rot, label="Rotacional")
-    plot!(tempo, U, label="Potencial")
-    plot!(tempo, E, label="Total")
+function fazer_gráfico_energia(bastão::Bastão, tempo::Vector{Float64}, k_trans::Vector{Float64}, k_rot::Vector{Float64}, U::Vector{Float64}, E::Vector{Float64})
+    τ = (bastão.velocidade_inicial.y / bastão.aceleração.y) * (-1.0)
+    pl = plot(xlabel="t/τ", ylabel=L"$E/E_{\rm tot}$", minorgrid=true, title="Evolução da energia - Lançamento de bastão", framestyle=:box, legend=:topright)
+    plot!(tempo./τ, k_trans./E, label="Cinética")
+    plot!(tempo./τ, k_rot./E, label="Rotacional")
+    plot!(tempo./τ, U./E, label="Potencial")
+    plot!(tempo./τ, E./E, label="Total")
 
     savefig(pl, "Rotações de Corpos Rígidos/energia.png")
 end 

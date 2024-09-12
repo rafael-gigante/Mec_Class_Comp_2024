@@ -27,6 +27,11 @@ function animatePiao(SimulationTime, TimeStep, thetaValues, phiValues)
     total_frames = Int(duration * max_fps)  # Total number of frames
     t_values = range(0, stop=duration, length=total_frames)  # Time steps
 
+    # Lists for the trajectory
+    trajectory_x = Float64[]
+    trajectory_y = Float64[]
+    trajectory_z = Float64[]
+
     # Create the animation
     for t in t_values
 
@@ -39,11 +44,18 @@ function animatePiao(SimulationTime, TimeStep, thetaValues, phiValues)
         # Convert the spherical coordinates to Cartesian
         x, y, z = sphericalToCartesian(r, theta, phi)
 
+        # Coordinates of the trajectory
+        push!(trajectory_x, x)
+        push!(trajectory_y, y)
+        push!(trajectory_z, z)
+
         # Plot the piao in 3D
         plot3d([0, x], [0, y], [0, z], label=false, legend=false, 
                 title="Evolução do Pião \nt = $(round(t, digits=1)) s",
-                xlims=(-1, 1), ylims=(-1, 1), zlims=(0, 1), lw=2)
-        scatter!([x], [y], [z], color=:red, ms=4)
+                xlims=(-1, 1), ylims=(-1, 1), zlims=(0, 1), lw=2) # Piao
+        scatter!([x], [y], [z], color=:red, ms=4) # Red dot
+        plot3d!(trajectory_x, trajectory_y, trajectory_z, color=:red, lw=1) # Trajectory of the top
+
         frame(anim)  # Capture the frame
     end
     
@@ -64,5 +76,5 @@ function generate_gif(SimulationTime, TimeStep, thetaValues, phiValues, psiValue
 
     # Create an animation of the piao
     anim = animatePiao(SimulationTime, TimeStep, thetaValues, phiValues)
-    gif(anim, "piao_evolution.gif")  # Save the animation as a GIF
+    gif(anim, "Piao/piao_evolution.gif")  # Save the animation as a GIF
 end

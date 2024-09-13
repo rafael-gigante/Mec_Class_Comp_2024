@@ -40,21 +40,11 @@ end
 
 # Function f(θ)
 function f(spinningtop::SpinningTop)
-    alpha = -0.01
-    if (abs(spinningtop.θ₀ - spinningtop.θ) < abs(alpha))
-        a = (2 * spinningtop.M * 9.81 * spinningtop.ℓ) / spinningtop.I[1]
-        b = (spinningtop.I[3] * spinningtop.Ω / spinningtop.I[1])^2
-        f1 = a * (cos(spinningtop.θ₀) - cos(spinningtop.θ+alpha))
-        f2 = - b * ((cos(spinningtop.θ₀) - cos(spinningtop.θ+alpha))^2 / sin(spinningtop.θ+alpha)^2)
-        f = sqrt(abs(f1 + f2))
-        spinningtop.θ_dir = spinningtop.θ_dir * (-1)
-    else
-        a = (2 * spinningtop.M * 9.81 * spinningtop.ℓ) / spinningtop.I[1]
-        b = (spinningtop.I[3] * spinningtop.Ω / spinningtop.I[1])^2
-        f1 = a * (cos(spinningtop.θ₀) - cos(spinningtop.θ+alpha))
-        f2 = - b * ((cos(spinningtop.θ₀) - cos(spinningtop.θ+alpha))^2 / sin(spinningtop.θ+alpha)^2)
-        f = sqrt(abs(f1 + f2))
-    end
+    a = (2 * spinningtop.M * 9.81 * spinningtop.ℓ) / spinningtop.I[1]
+    b = (spinningtop.I[3] * spinningtop.Ω / spinningtop.I[1])^2
+    f1 = a * (cos(spinningtop.θ₀) - cos(spinningtop.θ))
+    f2 = - b * ((cos(spinningtop.θ₀) - cos(spinningtop.θ))^2 / sin(spinningtop.θ)^2)
+    f = sqrt(abs(f1 + f2))
     return f * spinningtop.θ_dir
 end
 
@@ -82,6 +72,13 @@ end
 
 # What happens in one iteration
 function atualizar_grandezas!(spinningtop::SpinningTop, dt::Float64)
+
+    alpha = 0.01
+
+    if abs(spinningtop.θ - spinningtop.θ₀) < alpha
+        spinningtop.θ += alpha
+        spinningtop.θ_dir *= -1
+    end
     # Velocities
     spinningtop.θ_dot = f(spinningtop)
     spinningtop.φ_dot = g(spinningtop)

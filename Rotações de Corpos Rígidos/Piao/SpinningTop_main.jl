@@ -4,15 +4,15 @@ using Plots
 
 # Parâmetros iniciais do sistema
 I = [1.0, 1.0, 2.0]         # Momentum of inertia
-M = 1.0                     # Mass
+M = 100.0                     # Mass
 ℓ = 1.0                     # Center of mass distance from the point (0,0)
-Ω = 1.0                     # Angular velocity of its physical axis
-θ₀ = 1.0                    # θ inicial
-dt = 0.0001                 # Time step
-simulation_time = 10.0      # Simulation duration
+Ω = 10.0                     # Angular velocity of its physical axis
+θ₀ = 0.4                    # θ inicial
+dt = 0.01                 # Time step
+simulation_time = 4.0      # Simulation duration
 
 # Define o piao
-spinningtop = SpinningTopSim.SpinningTop(I, M, ℓ, Ω, θ₀, θ₀, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+spinningtop = SpinningTopSim.SpinningTop(I, M, ℓ, Ω, θ₀, θ₀- 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)
 output = SpinningTopSim.Output([], [], [], [])
 
 # Simulation
